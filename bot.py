@@ -10,7 +10,6 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 TOKEN = "8780483285:AAEvELoYzQtwG9jTo9ueLEm3Ve5idK3GfUg"
 ADMIN_ID = 8620457869
 
-# Xatoliklarni aniq ko'rsatib turish uchun sozlama
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -24,6 +23,7 @@ class RegisterState(StatesGroup):
     full_name = State()
     phone = State()
     school = State()
+    grade_type = State()
     direction = State()
 
 def get_main_menu():
@@ -41,7 +41,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
         f"Assalomu alaykum, <b>{message.from_user.full_name}</b>!\n"
-        "Sherobod tumanidagi 4-sonli texnikumining rasmiy qabul botiga xush kelibsiz. Kerakli bo'limni tanlang:",
+        "Sherobod tumanidagi 4-sonli texnikumining rasmiy qabul botiga xush kelibsiz. Kelajagingni biz bilan qur! Kerakli bo'limni tanlang:",
         reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
@@ -49,11 +49,17 @@ async def cmd_start(message: types.Message, state: FSMContext):
 @dp.message(F.text == "📚 Kasb yo'nalishlari")
 async def show_courses(message: types.Message):
     text = (
-        "📚 <b>Sherobod 4-sonli texnikumida mavjud yo'nalishlar:</b>\n\n"
-        "1. Tikuvchilik va bichish texnologiyasi\n"
-        "2. Payvandlovchi (elektrogazpayvandchi)\n"
-        "3. Buhgalteriya hisobi va audit\n"
-        "4. Kompyuter injineringi\n\n"
+        "🎓 <b>Sherobod 4-sonli texnikumida mavjud yo'nalishlar:</b>\n\n"
+        "<b>📌 9-sinf bitiruvchilari uchun:</b>\n"
+        "1. Moda va tikuv ishlab chiqarish texnologiyasi\n"
+        "2. Kompyuter tarmoqlari va IT sevisi\n"
+        "3. Raqamli va smart maishiy texnika jihozlariga servis\n"
+        "4. Avtomobillar servisi\n\n"
+        "<b>📌 11-sinf bitiruvchilari va yuqori yoshlar uchun:</b>\n"
+        "5. Sport faoliyati va faoliyat turlari bo'yicha\n"
+        "6. Kutubxona va bibliografiya (Dual ta'lim shaklida)\n"
+        "7. Maktabgacha ta'lim tashkilotlari tarbiyachisi (Dual ta'lim)\n"
+        "8. Axborot va kiber xavfsizligi (Dual ta'lim shaklida)\n\n"
         "Ro'yxatdan o'tish uchun '📝 Onlayn ro'yxatdan o'tish' tugmasini bosing."
     )
     await message.answer(text, parse_mode="HTML")
@@ -65,9 +71,12 @@ async def show_faq(message: types.Message):
 @dp.message(F.text == "📞 Bog'lanish va manzil")
 async def show_contact(message: types.Message):
     text = (
-        "📍 <b>Manzil:</b> Surxondaryo viloyati, Sherobod tumani.\n"
-        "📞 <b>Qabul komissiyasi:</b> +998 90 123 45 67\n"
-        "🌐 <b>Mo'ljal:</b> Texnikum binosi."
+        "📍 <b>Manzil:</b> Surxondaryo viloyati, Sherobod tumani, Do'stlik MFY, Mustaqillik 3-uy (4-son Texnikum).\n\n"
+        "📞 <b>Qabul komissiyasi raqamlari:</b>\n"
+        "• 94-205-62-46\n"
+        "• 94-515-71-75\n"
+        "• 94-516-28-82\n\n"
+        "🌐 <i>Biz bilan kelajagingizni yarating! Sifatli ta'lim va amaliyotga yo'naltirilgan ta'lim.</i>"
     )
     await message.answer(text, parse_mode="HTML")
 
@@ -117,24 +126,53 @@ async def process_school(message: types.Message, state: FSMContext):
         
     await state.update_data(school=message.text.strip())
     
+    # Sinif toifasini tanlash (9-sinf yoki 11-sinf)
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Tikuvchilik", callback_data="dir_tikuv")],
-            [InlineKeyboardButton(text="Payvandlovchi", callback_data="dir_payvand")],
-            [InlineKeyboardButton(text="Buxgalteriya", callback_data="dir_bux")],
-            [InlineKeyboardButton(text="Kompyuter injineringi", callback_data="dir_komp")]
+            [InlineKeyboardButton(text="9-sinf bitiruvchisi", callback_data="category_9")],
+            [InlineKeyboardButton(text="11-sinf / Yuqori yoshlar", callback_data="category_11")]
         ]
     )
-    await message.answer("Qaysi yo'nalishda o'qishni xohlaysiz? Tanlang:", reply_markup=kb)
+    await message.answer("Ta'lim olmoqchi bo'lgan toifangizni tanlang:", reply_markup=kb)
+    await state.set_state(RegisterState.grade_type)
+
+@dp.callback_query(RegisterState.grade_type, F.data.startswith("category_"))
+async def process_grade_type(callback: types.CallbackQuery, state: FSMContext):
+    if callback.data == "category_9":
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="👗 Moda va tikuv ishlab chiqarish texnologiyasi", callback_data="dir_moda")],
+                [InlineKeyboardButton(text="💻 Kompyuter tarmoqlari va IT sevisi", callback_data="dir_it")],
+                [InlineKeyboardButton(text="🔧 Raqamli va smart maishiy texnika", callback_data="dir_texnika")],
+                [InlineKeyboardButton(text="🚗 Avtomobillar servisi", callback_data="dir_auto")]
+            ]
+        )
+        await callback.message.edit_text("9-sinf yo'nalishlaridan birini tanlang:", reply_markup=kb)
+    else:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⚽ Sport faoliyati va faoliyat turlari", callback_data="dir_sport")],
+                [InlineKeyboardButton(text="📚 Kutubxona va bibliografiya (Dual)", callback_data="dir_kutubxona")],
+                [InlineKeyboardButton(text="👶 Maktabgacha ta'lim (Dual)", callback_data="dir_maktabgacha")],
+                [InlineKeyboardButton(text="🛡️ Axborot va kiber xavfsizligi (Dual)", callback_data="dir_kiber")]
+            ]
+        )
+        await callback.message.edit_text("11-sinf va yuqori yoshlar yo'nalishlaridan birini tanlang:", reply_markup=kb)
+    
     await state.set_state(RegisterState.direction)
+    await callback.answer()
 
 @dp.callback_query(RegisterState.direction, F.data.startswith("dir_"))
 async def process_direction(callback: types.CallbackQuery, state: FSMContext):
     directions = {
-        "dir_tikuv": "Tikuvchilik va bichish texnologiyasi",
-        "dir_payvand": "Payvandlovchi",
-        "dir_bux": "Buxgalteriya",
-        "dir_komp": "Kompyuter injineringi"
+        "dir_moda": "Moda va tikuv ishlab chiqarish texnologiyasi (9-sinf)",
+        "dir_it": "Kompyuter tarmoqlari va IT sevisi (9-sinf)",
+        "dir_texnika": "Raqamli va smart maishiy texnika jihozlariga servis (9-sinf)",
+        "dir_auto": "Avtomobillar servisi (9-sinf)",
+        "dir_sport": "Sport faoliyati va faoliyat turlari bo'yicha (11-sinf)",
+        "dir_kutubxona": "Kutubxona va bibliografiya - Dual ta'lim (11-sinf)",
+        "dir_maktabgacha": "Maktabgacha ta'lim tashkilotlari tarbiyachisi - Dual ta'lim (11-sinf)",
+        "dir_kiber": "Axborot va kiber xavfsizligi - Dual ta'lim (11-sinf)"
     }
     
     selected_dir = directions.get(callback.data, "Noma'lum")
@@ -145,7 +183,7 @@ async def process_direction(callback: types.CallbackQuery, state: FSMContext):
         f"👤 <b>F.I.SH:</b> {data.get('full_name')}\n"
         f"📱 <b>Telefon:</b> {data.get('phone')}\n"
         f"🏫 <b>Maktab/Sinf:</b> {data.get('school')}\n"
-        f"📚 <b>Yo'nalish:</b> {selected_dir}\n"
+        f"📚 <b>Tanlangan yo'nalish:</b> {selected_dir}\n"
         f"🔗 <b>Foydalanuvchi:</b> @{callback.from_user.username or 'mavjud_emas'} (ID: {callback.from_user.id})"
     )
     
@@ -154,7 +192,7 @@ async def process_direction(callback: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         logging.error(f"Adminga yuborishda xatolik: {e}")
     
-    await callback.message.answer("✅ Ma'lumotlaringiz muvaffaqiyatli qabul qilindi! Tez orada siz bilan bog'lanishadi.", reply_markup=get_main_menu())
+    await callback.message.answer("✅ Ma'lumotlaringiz muvaffaqiyatli qabul qilindi! Tez orada qabul komissiyasi siz bilan bog'lanadi.", reply_markup=get_main_menu())
     await callback.answer()
     await state.clear()
 
@@ -181,4 +219,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Bot to'xtatildi!")
-  
