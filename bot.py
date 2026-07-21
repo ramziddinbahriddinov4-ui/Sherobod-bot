@@ -1,6 +1,9 @@
+import os
 import asyncio
 import logging
 import sys
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -18,6 +21,24 @@ logging.basicConfig(
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+# --- RENDER UCHUN VEB-SERVER QISMI ---
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running successfully!")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server.serve_forever()
+
+def start_web_server():
+    server_thread = threading.Thread(target=run_server)
+    server_thread.daemon = True
+    server_thread.start()
+# ------------------------------------
 
 class RegisterState(StatesGroup):
     full_name = State()
@@ -126,7 +147,6 @@ async def process_school(message: types.Message, state: FSMContext):
         
     await state.update_data(school=message.text.strip())
     
-    # Sinif toifasini tanlash (9-sinf yoki 11-sinf)
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="9-sinf bitiruvchisi", callback_data="category_9")],
@@ -205,6 +225,9 @@ async def fallback_handler(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Iltimos, yuqoridagi ko'rsatmaga muvofiq ma'lumot kiriting.")
 
 async def main():
+    # 1. Render talabini bajarish uchun veb-serverni ishga tushiramiz
+    start_web_server()
+    
     while True:
         try:
             logging.info("Bot ishga tushmoqda...")
@@ -219,3 +242,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Bot to'xtatildi!")
+            
